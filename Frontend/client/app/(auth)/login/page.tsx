@@ -19,10 +19,6 @@ import {
   SelectItem,
   Select,
 } from "@/components/ui/select";
-import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/auth-api';
-import { useState } from 'react';
-import { Alert } from '@/components/ui/alert';
 
 const formSchema = z
   .object({
@@ -55,9 +51,6 @@ const formSchema = z
   );
 
 export default function Home() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -70,28 +63,12 @@ export default function Home() {
 
   const accountType = form.watch("accountType");
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      setError(null);
-      const response = await authApi.login({
-        email: values.emailAddress,
-        password: values.password,
-      });
-      
-      // Redirect to dashboard on successful login
-      router.push('/dashboard');
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Login failed. Please try again.');
-    }
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    console.log({ values });
   };
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          {error}
-        </Alert>
-      )}
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleSubmit)}

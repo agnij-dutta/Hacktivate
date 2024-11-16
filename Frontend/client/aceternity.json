@@ -1,0 +1,5 @@
+{
+  "componentsPath": "components/ui",
+  "cnPath": "utils/cn.ts",
+  "tailwindConfigPath": "tailwind.config.js"
+}
