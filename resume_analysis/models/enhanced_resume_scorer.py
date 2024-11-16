@@ -1,9 +1,9 @@
 from typing import Dict, Optional
-from .llm_analyzer import LLMAnalyzer
-from .resume_scorer import ResumeScorer
-from config import Config
-from utils.exceptions import ResumeAnalysisError
-from parsers.profile_parser import ProfileParser
+from resume_analysis.models.llm_analyzer import LLMAnalyzer
+from resume_analysis.models.resume_scorer import ResumeScorer
+from resume_analysis.config import Config
+from resume_analysis.utils.exceptions import ResumeAnalysisError
+from resume_analysis.parsers.profile_parser import ProfileParser
 import re
 
 class EnhancedResumeScorer:
@@ -12,36 +12,30 @@ class EnhancedResumeScorer:
         self.llm_analyzer = LLMAnalyzer(config)
         self.traditional_scorer = ResumeScorer(config.GITHUB_TOKEN)
         self.profile_parser = ProfileParser({
-            'github_token': config.GITHUB_TOKEN,
-            'linkedin_token': config.LINKEDIN_TOKEN
+            'github_token': config.GITHUB_TOKEN
         })
     
     async def analyze_profile(
         self,
         resume_pdf: bytes,
         github_username: Optional[str] = None,
-        linkedin_url: Optional[str] = None
+        linkedin_pdf: Optional[bytes] = None
     ) -> Dict:
         try:
             # Parse all sources into concatenated text
             concatenated_text = await self.profile_parser.parse_all_sources(
                 resume_pdf,
                 github_username,
-                linkedin_url
+                linkedin_pdf
             )
             
-            # Extract section-specific content for targeted analysis
+            # Extract section-specific content
             sections = self._split_sections(concatenated_text)
             
             # Perform analyses
-            traditional_analysis = await self.traditional_scorer.analyze_async(
-                sections['resume']  # Use primarily resume section for traditional analysis
-            )
-            
-            # Use full concatenated text for LLM analysis
+            traditional_analysis = await self.traditional_scorer.analyze_async(sections['resume'])
             llm_analysis = await self.llm_analyzer.analyze_resume(concatenated_text)
             
-            # Combine analyses with section awareness
             return self._combine_analyses(
                 traditional_analysis, 
                 llm_analysis,

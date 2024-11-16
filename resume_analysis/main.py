@@ -1,13 +1,16 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import requests
 from dotenv import load_dotenv
-from models.enhanced_resume_scorer import EnhancedResumeScorer
-from models.hackathon_matcher import HackathonMatcher
+from resume_analysis.models.enhanced_resume_scorer import EnhancedResumeScorer
+from resume_analysis.models.hackathon_matcher import HackathonMatcher
 from typing import List, Dict, Optional
 import json
-from utils.rate_limiter import RateLimiter
-from config import Config
-from parsers.profile_parser import ProfileParser
+from resume_analysis.utils.rate_limiter import RateLimiter
+from resume_analysis.config import Config
+from resume_analysis.parsers.profile_parser import ProfileParser
 import asyncio
 
 # Load environment variables
@@ -74,6 +77,25 @@ async def analyze_candidate(
     except Exception as e:
         print(f"Error in analyze_candidate: {str(e)}")
         raise
+
+async def analyze_linkedin_profile(pdf_file_content: bytes) -> Dict:
+    parser = ProfileParser()
+    try:
+        profile_data = await parser.parse_linkedin_pdf(pdf_file_content)
+        
+        # Add any additional analysis here
+        analysis_results = {
+            'profile_data': profile_data,
+            'analysis': {
+                'skills_match': analyze_skills(profile_data['skills']),
+                'experience_level': analyze_experience(profile_data['experience']),
+                'education_level': analyze_education(profile_data['education'])
+            }
+        }
+        
+        return analysis_results
+    except Exception as e:
+        raise ValueError(f"Failed to analyze LinkedIn profile: {str(e)}")
 
 if __name__ == "__main__":
     # Example usage

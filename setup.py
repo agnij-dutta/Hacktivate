@@ -5,8 +5,16 @@ setup(
     version="1.0.0",
     packages=find_packages(),
     install_requires=[
-        line.strip()
-        for line in open("requirements.txt")
-        if line.strip() and not line.startswith("#")
-    ],
+        "python-dotenv>=0.19.0",
+        "pydantic>=2.0.0",
+        "pydantic-settings>=2.0.0",
+        "requests>=2.31.0",
+        "PyPDF2>=3.0.0",
+        "PyGithub>=1.55",
+        "python-linkedin>=2.0",
+        "python-dateutil>=2.8.2",
+        "asyncio>=3.4.3",
+        "regex>=2022.0.0",
+        "typing-extensions>=4.0.0"
+    ]
 ) 

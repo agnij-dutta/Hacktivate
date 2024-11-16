@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional
 import json
 import asyncio
-from ..utils.cache import Cache
-from ..utils.exceptions import LLMError
+from resume_analysis.utils.cache import Cache
+from resume_analysis.utils.exceptions import LLMError
 from config import Config
 import requests
 import re

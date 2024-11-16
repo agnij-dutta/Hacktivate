@@ -2,8 +2,6 @@ from typing import Dict, Optional, List
 import PyPDF2
 import io
 from github import Github
-from linkedin import linkedin
-from datetime import datetime 
 import re
 from ..utils.exceptions import TokenError
 from api.pylibs.jwt_utils import verify_jwt_token
@@ -13,9 +11,91 @@ class ProfileParser:
         self.config = config or {}
         self.auth_token = auth_token
         self.github_token = self.config.get('github_token')
-        self.linkedin_api = None
-        if self.config.get('linkedin_token'):
-            self._initialize_linkedin()
+
+    async def parse_all_sources(self, 
+                              resume_pdf: bytes,
+                              github_username: Optional[str] = None,
+                              linkedin_pdf: Optional[bytes] = None) -> str:
+        """Parse and concatenate all available profile sources"""
+        self._validate_auth()
+        
+        sections = []
+        
+        # Parse Resume PDF
+        if resume_pdf:
+            resume_text = await self._parse_resume_pdf(resume_pdf)
+            sections.append(f"RESUME SECTION:\n{resume_text}")
+        
+        # Parse GitHub Profile
+        if github_username and self.github_token:
+            github_text = await self._parse_github_profile(github_username)
+            sections.append(f"GITHUB SECTION:\n{github_text}")
+            
+        # Parse LinkedIn PDF
+        if linkedin_pdf:
+            linkedin_text = await self._parse_linkedin_pdf(linkedin_pdf)
+            sections.append(f"LINKEDIN SECTION:\n{linkedin_text}")
+            
+        return "\n\n" + "\n\n===\n\n".join(sections) + "\n"
+
+    async def _parse_linkedin_pdf(self, pdf_content: bytes) -> str:
+        """Parse LinkedIn profile PDF export"""
+        try:
+            pdf_file = io.BytesIO(pdf_content)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+
+            # Extract structured information
+            structured_data = {
+                'basic_info': self._extract_basic_info(text),
+                'experience': self._extract_experience(text),
+                'education': self._extract_education(text),
+                'skills': self._extract_skills(text)
+            }
+
+            # Format the extracted information
+            formatted_text = self._format_linkedin_data(structured_data)
+            return formatted_text
+
+        except Exception as e:
+            raise ValueError(f"Failed to parse LinkedIn PDF: {str(e)}")
+
+    def _format_linkedin_data(self, data: Dict) -> str:
+        """Format structured LinkedIn data into text"""
+        text = "LinkedIn Profile\n\n"
+        
+        # Basic Info
+        if data['basic_info']:
+            text += f"Name: {data['basic_info'].get('name', '')}\n"
+            text += f"Headline: {data['basic_info'].get('headline', '')}\n"
+            text += f"Location: {data['basic_info'].get('location', '')}\n\n"
+        
+        # Experience
+        text += "Experience:\n"
+        for exp in data['experience']:
+            text += f"- {exp.get('title', '')} at {exp.get('company', '')}\n"
+            text += f"  {exp.get('date_range', '')}\n"
+            if exp.get('description'):
+                text += f"  {exp['description']}\n"
+            text += "\n"
+        
+        # Education
+        text += "Education:\n"
+        for edu in data['education']:
+            text += f"- {edu.get('degree', '')} from {edu.get('school', '')}\n"
+            if edu.get('date_range'):
+                text += f"  {edu['date_range']}\n"
+            text += "\n"
+        
+        # Skills
+        text += "Skills:\n"
+        for skill in data['skills']:
+            text += f"- {skill}\n"
+            
+        return text
     
     def _validate_auth(self):
         """Validate JWT authentication token"""
@@ -27,34 +107,6 @@ class ProfileParser:
             raise TokenError("Invalid or expired authentication token")
         return email
             
-    async def parse_all_sources(self, 
-                              resume_pdf: bytes,
-                              github_username: Optional[str] = None,
-                              linkedin_url: Optional[str] = None) -> str:
-        """Parse and concatenate all available profile sources"""
-        # Validate authentication
-        self._validate_auth()
-        
-        sections = []
-        
-        # Parse PDF Resume
-        if resume_pdf:
-            resume_text = await self._parse_resume_pdf(resume_pdf)
-            sections.append(f"RESUME SECTION:\n{resume_text}")
-        
-        # Parse GitHub Profile
-        if github_username and self.github_token:
-            github_text = await self._parse_github_profile(github_username)
-            sections.append(f"GITHUB SECTION:\n{github_text}")
-            
-        # Parse LinkedIn Profile
-        if linkedin_url and self.linkedin_api:
-            linkedin_text = await self._parse_linkedin_profile(linkedin_url)
-            sections.append(f"LINKEDIN SECTION:\n{linkedin_text}")
-            
-        # Combine all sections with clear separators
-        return "\n\n" + "\n\n===\n\n".join(sections) + "\n"
-    
     async def _parse_resume_pdf(self, pdf_bytes: bytes) -> str:
         """Extract and clean text from PDF resume"""
         try:
@@ -126,96 +178,114 @@ class ProfileParser:
         
         return text.strip()
     
-    def _initialize_linkedin(self):
-        """Initialize LinkedIn API client"""
-        try:
-            application = linkedin.LinkedInApplication(
-                token=self.linkedin_token
-            )
-            self.linkedin_api = application
-        except Exception as e:
-            print(f"Warning: Failed to initialize LinkedIn API: {str(e)}")
-            self.linkedin_api = None
-    
-    async def _parse_linkedin_profile(self, profile_url: str) -> str:
-        """Extract relevant information from LinkedIn profile using python3-linkedin"""
-        if not self.linkedin_api:
-            raise ValueError("LinkedIn API not initialized")
-            
-        try:
-            # Extract profile ID from URL
-            profile_id = self._extract_profile_id(profile_url)
-            
-            # Get basic profile information
-            profile = self.linkedin_api.get_profile(selectors=[
-                'id', 'first-name', 'last-name', 'headline',
-                'industry', 'summary', 'specialties',
-                'positions', 'educations', 'skills'
-            ])
-            
-            # Format the extracted information
-            text = "LINKEDIN SECTION\n"
-            text += f"Name: {profile.get('firstName', '')} {profile.get('lastName', '')}\n"
-            text += f"Headline: {profile.get('headline', '')}\n"
-            text += f"Industry: {profile.get('industry', '')}\n\n"
-            
-            # Add summary if available
-            if profile.get('summary'):
-                text += f"Summary:\n{profile['summary']}\n\n"
-            
-            # Add positions
-            text += "Experience:\n"
-            for position in profile.get('positions', {}).get('values', []):
-                company = position.get('company', {}).get('name', 'Unknown Company')
-                title = position.get('title', 'Unknown Title')
-                start_date = self._format_date(position.get('startDate', {}))
-                end_date = self._format_date(position.get('endDate', {})) or 'Present'
-                
-                text += f"- {title} at {company}\n"
-                text += f"  {start_date} - {end_date}\n"
-                if position.get('summary'):
-                    text += f"  {position['summary']}\n"
-                text += "\n"
-            
-            # Add education
-            text += "Education:\n"
-            for education in profile.get('educations', {}).get('values', []):
-                school = education.get('schoolName', '')
-                degree = education.get('degree', '')
-                field = education.get('fieldOfStudy', '')
-                text += f"- {degree} in {field} from {school}\n"
-            
-            # Add skills
-            text += "\nSkills:\n"
-            for skill in profile.get('skills', {}).get('values', []):
-                text += f"- {skill.get('skill', {}).get('name', '')}\n"
-                
-            return text
-            
-        except Exception as e:
-            raise ValueError(f"Failed to parse LinkedIn profile: {str(e)}")
-    
-    def _extract_profile_id(self, profile_url: str) -> str:
-        """Extract LinkedIn profile ID from URL"""
-        try:
-            # Handle different URL formats
-            if '/in/' in profile_url:
-                return profile_url.split('/in/')[-1].split('/')[0]
-            elif '/pub/' in profile_url:
-                return profile_url.split('/pub/')[-1].split('/')[0]
-            else:
-                raise ValueError("Invalid LinkedIn profile URL format")
-        except Exception:
-            raise ValueError("Could not extract profile ID from URL")
-    
-    def _format_date(self, date_dict: Dict) -> str:
-        """Format LinkedIn date dictionary to string"""
-        if not date_dict:
-            return ""
+    def _extract_basic_info(self, text: str) -> Dict:
+        """Extract basic profile information"""
+        basic_info = {}
         
-        try:
-            month = str(date_dict.get('month', 1)).zfill(2)
-            year = str(date_dict.get('year', ''))
-            return f"{month}/{year}"
-        except Exception:
-            return "" 
+        # Name is usually at the start of the PDF
+        name_match = re.search(r'^([^\n]+)', text)
+        if name_match:
+            basic_info['name'] = name_match.group(1).strip()
+
+        # Extract headline (usually follows the name)
+        headline_match = re.search(r'^[^\n]+\n([^\n]+)', text)
+        if headline_match:
+            basic_info['headline'] = headline_match.group(1).strip()
+
+        # Extract location
+        location_match = re.search(r'Location\s*([^\n]+)', text, re.IGNORECASE)
+        if location_match:
+            basic_info['location'] = location_match.group(1).strip()
+
+        return basic_info
+
+    def _extract_experience(self, text: str) -> List[Dict]:
+        """Extract work experience entries"""
+        experience = []
+        
+        # Find the Experience section
+        exp_section = re.search(r'Experience\s*(.+?)(?=Education|Skills|$)', text, re.DOTALL | re.IGNORECASE)
+        if exp_section:
+            exp_text = exp_section.group(1)
+            
+            # Split into individual roles
+            # LinkedIn PDF usually formats each role with company name followed by role details
+            roles = re.split(r'\n(?=[A-Za-z]+ · )', exp_text)
+            
+            for role in roles:
+                if not role.strip():
+                    continue
+                    
+                role_dict = {}
+                
+                # Extract company and title
+                company_match = re.search(r'(.+?) · (.+?)\n', role)
+                if company_match:
+                    role_dict['company'] = company_match.group(1).strip()
+                    role_dict['title'] = company_match.group(2).strip()
+
+                # Extract dates
+                dates_match = re.search(r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*-\s*(?:Present|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})', role)
+                if dates_match:
+                    role_dict['date_range'] = dates_match.group(0).strip()
+
+                # Extract description
+                desc_match = re.search(r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}.+?\n(.+?)(?=\n\n|$)', role, re.DOTALL)
+                if desc_match:
+                    role_dict['description'] = desc_match.group(1).strip()
+
+                experience.append(role_dict)
+
+        return experience
+
+    def _extract_education(self, text: str) -> List[Dict]:
+        """Extract education entries"""
+        education = []
+        
+        # Find the Education section
+        edu_section = re.search(r'Education\s*(.+?)(?=Experience|Skills|$)', text, re.DOTALL | re.IGNORECASE)
+        if edu_section:
+            edu_text = edu_section.group(1)
+            
+            # Split into individual education entries
+            entries = re.split(r'\n(?=[A-Za-z])', edu_text)
+            
+            for entry in entries:
+                if not entry.strip():
+                    continue
+                    
+                edu_dict = {}
+                
+                # Extract school name
+                school_match = re.search(r'(.+?)\n', entry)
+                if school_match:
+                    edu_dict['school'] = school_match.group(1).strip()
+
+                # Extract degree
+                degree_match = re.search(r'(?:Bachelor|Master|PhD|BSc|MSc|MBA|MD|JD).+?(?:\n|$)', entry)
+                if degree_match:
+                    edu_dict['degree'] = degree_match.group(0).strip()
+
+                # Extract dates
+                dates_match = re.search(r'\d{4}\s*-\s*(?:\d{4}|Present)', entry)
+                if dates_match:
+                    edu_dict['date_range'] = dates_match.group(0).strip()
+
+                education.append(edu_dict)
+
+        return education
+
+    def _extract_skills(self, text: str) -> List[str]:
+        """Extract skills list"""
+        skills = []
+        
+        # Find the Skills section
+        skills_section = re.search(r'Skills\s*(.+?)(?=Languages|Interests|$)', text, re.DOTALL | re.IGNORECASE)
+        if skills_section:
+            skills_text = skills_section.group(1)
+            
+            # Split into individual skills
+            # Skills are usually bullet-pointed or separated by newlines
+            skills = [skill.strip() for skill in re.split(r'[•\n]', skills_text) if skill.strip()]
+
+        return skills 

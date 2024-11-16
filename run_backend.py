@@ -1,6 +1,6 @@
 import uvicorn
 from api.api import app
-from api.pylibs.auth import init_db
+from api.pylibs.auth_db import init_db
 
 if __name__ == "__main__":
     # Initialize database
