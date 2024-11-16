@@ -3,7 +3,7 @@ import json
 import asyncio
 from resume_analysis.utils.cache import Cache
 from resume_analysis.utils.exceptions import LLMError
-from config import Config
+from ..config import Config
 import requests
 import re
 
