@@ -3,7 +3,7 @@ import hashlib
 import os
 
 # Database setup
-DB_NAME = './databases/auth_data.db'
+DB_NAME = 'auth_data.db'
 
 def create_table():
     """Create users table if it doesn't exist."""
