@@ -1,9 +1,10 @@
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
+import os
 
-SECRET_KEY = "your-secret-key"  # Move to environment variables in production
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 def create_jwt_token(email: str) -> str:
     expires_delta = timedelta(days=1)
