@@ -4,7 +4,7 @@
 
 Hacktivate is an innovative platform designed to enhance the hackathon experience for both participants and organizers. By streamlining the application process and improving participant evaluation, Hacktivate aims to create a more efficient and engaging environment for all stakeholders involved in hackathons.
 
-![Hacktivate Landing Page](https://imgur.com/a/7vcJ9o4)
+![Hacktivate](https://i.ibb.co/CJsbSkw/image-2024-11-17-035153992.png)
 
 ### What is a Hackathon? 🤔
 
@@ -54,6 +54,8 @@ A **hackathon** is a time-bound event where individuals, typically developers, d
 
 **User Dashboard**
 - **Comprehensive Overview**: Access to a dashboard displaying all hackathons participated in or eligible for, providing a customized experience.
+
+![Participant](https://i.ibb.co/bzqfsTy/image-2024-11-17-040200187.png)
 
 ## From the Organizer’s Perspective
 
