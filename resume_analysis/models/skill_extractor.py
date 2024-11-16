@@ -1,15 +1,12 @@
-from typing import List, Dict
+from typing import Dict, List
 import spacy
-import re
 from collections import defaultdict
+import re
 
 class SkillExtractor:
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
-        self.domain_skills = self._load_domain_skills()
-        
-    def _load_domain_skills(self) -> Dict[str, List[str]]:
-        return {
+        self.domain_skills = {
             'ai_ml': [
                 'machine learning', 'deep learning', 'neural networks', 'tensorflow',
                 'pytorch', 'scikit-learn', 'computer vision', 'nlp', 'data science'
@@ -31,26 +28,34 @@ class SkillExtractor:
                 'ethical hacking', 'vulnerability assessment', 'firewall'
             ]
         }
-    
-    def extract_skills(self, text: str) -> Dict[str, List[str]]:
+
+    def extract_skills(self, text: str) -> Dict:
         doc = self.nlp(text.lower())
         found_skills = defaultdict(list)
         
-        # Extract skills using NER and pattern matching
+        # Extract skills using pattern matching
         for domain, skills in self.domain_skills.items():
             for skill in skills:
                 if skill in text.lower():
                     found_skills[domain].append(skill)
         
         # Extract years of experience per domain
-        experience_patterns = {
-            domain: re.compile(f"(\d+)[\s-]*(?:year|yr)s?.*?(?:experience|exp)?.*?{domain}", re.I)
-            for domain in self.domain_skills.keys()
-        }
+        for domain in self.domain_skills.keys():
+            experience = self._extract_experience(text, domain)
+            if experience:
+                found_skills[f"{domain}_experience"] = experience
+                
+        return dict(found_skills)
         
-        for domain, pattern in experience_patterns.items():
-            matches = pattern.findall(text)
+    def _extract_experience(self, text: str, domain: str) -> int:
+        """Extract years of experience for a specific domain"""
+        patterns = [
+            rf"(\d+)\s*(?:years?|yrs?).+?(?:experience|exp).+?{domain}",
+            rf"{domain}.+?(\d+)\s*(?:years?|yrs?).+?(?:experience|exp)"
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text.lower())
             if matches:
-                found_skills[f"{domain}_experience"] = max(map(int, matches))
-        
-        return dict(found_skills) 
+                return max(map(int, matches))
+        return 0

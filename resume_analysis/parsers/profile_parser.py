@@ -106,7 +106,7 @@ class ProfileParser:
         
         # Normalize line endings
         text = text.replace('\r', '\n')
-        text = re.sub(r'\n\s*\n+', '\n\n', text)
+        text = re.sub(r'\n\s*\n+', '\n\n', text) 
         
         return text.strip()
     

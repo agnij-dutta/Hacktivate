@@ -1,9 +1,9 @@
 from typing import Dict, Optional
 from .llm_analyzer import LLMAnalyzer
 from .resume_scorer import ResumeScorer
-from ..config import Config
-from ..utils.exceptions import ResumeAnalysisError
-from ..parsers.profile_parser import ProfileParser
+from config import Config
+from utils.exceptions import ResumeAnalysisError
+from parsers.profile_parser import ProfileParser
 import re
 
 class EnhancedResumeScorer:

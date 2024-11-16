@@ -9,6 +9,8 @@ from utils.token_validator import TokenValidator
 from utils.rate_limiter import RateLimiter
 from config import Config
 from parsers.profile_parser import ProfileParser
+import asyncio
+from openai import OpenAI
 
 
 # Load environment variables
@@ -17,26 +19,28 @@ load_dotenv()
 def initialize_llm():
     """Initialize LLM with environment variables and validate tokens"""
     try:
-        huggingface_token = os.getenv('HUGGINGFACE_TOKEN')
-        if not huggingface_token:
-            raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY not found in environment variables")
         
-        # Validate token
-        is_valid, error_message = TokenValidator.validate_huggingface_token(huggingface_token)
-        if not is_valid:
-            raise ValueError(f"Invalid Hugging Face token: {error_message}")
+        # Initialize OpenAI client
+        client = OpenAI(api_key=openai_api_key)
         
-        # Login to Hugging Face
-        login(token=huggingface_token)
-        print("Successfully initialized LLM with valid token")
+        # Test connection with a simple request
+        client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": "Test connection"}],
+            max_tokens=5
+        )
+        
+        print("Successfully initialized OpenAI client")
         return True
         
     except Exception as e:
         print(f"Error initializing LLM: {str(e)}")
         print("\nPlease ensure you have:")
-        print("1. Set the HUGGINGFACE_TOKEN environment variable")
-        print("2. Generated a READ token from https://huggingface.co/settings/tokens")
-        print("3. Enabled read permissions for the token")
+        print("1. Set the OPENAI_API_KEY environment variable")
+        print("2. Created an API key at https://platform.openai.com/api-keys")
         return False
 
 async def analyze_candidate(
@@ -125,17 +129,17 @@ if __name__ == "__main__":
     ]
     
     # Ensure environment variables are set
-    if not os.getenv('HUGGINGFACE_TOKEN') or not os.getenv('GITHUB_TOKEN'):
-        print("Please set HUGGINGFACE_TOKEN and GITHUB_TOKEN environment variables")
+    if not os.getenv('OPENAI_API_KEY') or not os.getenv('GITHUB_TOKEN'):
+        print("Please set OPENAI_API_KEY and GITHUB_TOKEN environment variables")
         exit(1)
     
-    # Run analysis
-    results = analyze_candidate(
+    # Run analysis using asyncio
+    results = asyncio.run(analyze_candidate(
         resume_pdf=sample_resume,
         github_username='example_user',
         linkedin_url='https://www.linkedin.com/in/example_user',
         hackathons=sample_hackathons
-    )
+    ))
     
     # Print results
     if results['status'] == 'success':

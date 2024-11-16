@@ -3,13 +3,8 @@ python-dotenv>=0.19.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
-# Machine Learning & Data Science
-torch>=2.0.0
-transformers>=4.30.0
-spacy>=3.0.0
-pandas>=1.3.0
-scikit-learn>=1.0.0
-en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz
+# OpenAI
+openai>=1.0.0
 
 # PDF Processing
 PyPDF2>=3.0.0
@@ -17,7 +12,6 @@ PyPDF2>=3.0.0
 # API Integrations
 PyGithub>=1.55
 python-linkedin>=2.0
-huggingface-hub>=0.16.0
 
 # Utilities
 python-dateutil>=2.8.2

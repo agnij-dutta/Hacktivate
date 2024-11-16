@@ -1,5 +1,3 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
 from typing import Dict, List, Optional
 import json
 import asyncio
@@ -7,27 +5,15 @@ from utils.cache import Cache
 from utils.exceptions import LLMError
 from config import Config
 import re
+from openai import OpenAI
 
 class LLMAnalyzer:
     def __init__(self, config: Optional[Config] = None):
         """Initialize LLM Analyzer with optional configuration"""
         self.config = config or Config()
         self.cache = Cache(ttl=self.config.CACHE_TTL)
-        self._initialize_model()
+        self.client = OpenAI(api_key=self.config.OPENAI_API_KEY)
         
-    def _initialize_model(self):
-        """Initialize the LLM model with error handling"""
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.config.MODEL_NAME)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.config.MODEL_NAME,
-                torch_dtype=torch.float16,
-                device_map="auto",
-                low_cpu_mem_usage=True
-            )
-        except Exception as e:
-            raise LLMError(f"Failed to initialize LLM: {str(e)}")
-
     async def analyze_resume(self, resume_text: str) -> Dict:
         """
         Perform deep analysis of resume using LLM with caching
@@ -160,36 +146,27 @@ class LLMAnalyzer:
         }
 
     async def _get_llm_response(self, prompt: str) -> Dict:
-        """Get response from LLM with improved error handling and retry logic"""
+        """Get response from OpenAI with error handling and retry logic"""
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                formatted_prompt = f"<s>[INST] {prompt} [/INST]"
-                inputs = self.tokenizer(
-                    formatted_prompt, 
-                    return_tensors="pt",
-                    truncation=True,
-                    max_length=2048
-                ).to("cuda")
-                
-                outputs = self.model.generate(
-                    inputs.input_ids,
-                    max_length=1000,
+                response = self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are an expert resume analyzer. Provide responses in valid JSON format."},
+                        {"role": "user", "content": prompt}
+                    ],
                     temperature=0.7,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    num_return_sequences=1,
-                    top_p=0.9,
-                    repetition_penalty=1.2
+                    max_tokens=1000
                 )
                 
-                response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                response_text = response.choices[0].message.content
                 
                 # Try to extract JSON from response
                 try:
-                    return json.loads(response)
+                    return json.loads(response_text)
                 except json.JSONDecodeError:
-                    extracted = self._extract_structured_data(response)
+                    extracted = self._extract_structured_data(response_text)
                     if extracted:
                         return extracted
                     

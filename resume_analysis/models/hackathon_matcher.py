@@ -1,7 +1,7 @@
 from typing import Dict, List
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from .resume_scorer import ResumeScorer
+from  .resume_scorer import ResumeScorer
 
 class HackathonMatcher:
     def __init__(self, historical_data_path: str = None):
