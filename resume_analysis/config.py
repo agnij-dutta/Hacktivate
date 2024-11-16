@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 import os
 
 class Config(BaseSettings):
-    OPENAI_API_KEY: str
+    HUGGINGFACE_TOKEN: str
     GITHUB_TOKEN: str | None = None
     LINKEDIN_TOKEN: str | None = None
     LINKEDIN_CLIENT_ID: str | None = None
