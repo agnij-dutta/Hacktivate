@@ -2,12 +2,16 @@ class ResumeAnalysisError(Exception):
     """Base exception for resume analysis errors"""
     pass
 
-class LLMError(ResumeAnalysisError):
-    """Raised when LLM processing fails"""
+class TokenError(ResumeAnalysisError):
+    """Raised for authentication token issues"""
     pass
 
-class TokenError(ResumeAnalysisError):
-    """Raised for token-related issues"""
+class APITokenError(ResumeAnalysisError):
+    """Raised for API token issues (GitHub, LinkedIn, etc)"""
+    pass
+
+class LLMError(ResumeAnalysisError):
+    """Raised when LLM processing fails"""
     pass
 
 class RateLimitError(ResumeAnalysisError):

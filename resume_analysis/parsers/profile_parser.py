@@ -5,20 +5,36 @@ from github import Github
 from linkedin import linkedin
 from datetime import datetime 
 import re
+from ..utils.exceptions import TokenError
+from api.pylibs.jwt_utils import verify_jwt_token
 
 class ProfileParser:
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: Optional[Dict] = None, auth_token: Optional[str] = None):
         self.config = config or {}
+        self.auth_token = auth_token
         self.github_token = self.config.get('github_token')
         self.linkedin_api = None
         if self.config.get('linkedin_token'):
             self._initialize_linkedin()
     
+    def _validate_auth(self):
+        """Validate JWT authentication token"""
+        if not self.auth_token:
+            raise TokenError("Authentication token required")
+            
+        email = verify_jwt_token(self.auth_token)
+        if not email:
+            raise TokenError("Invalid or expired authentication token")
+        return email
+            
     async def parse_all_sources(self, 
                               resume_pdf: bytes,
                               github_username: Optional[str] = None,
                               linkedin_url: Optional[str] = None) -> str:
         """Parse and concatenate all available profile sources"""
+        # Validate authentication
+        self._validate_auth()
+        
         sections = []
         
         # Parse PDF Resume
@@ -89,7 +105,7 @@ class ProfileParser:
             text += f"Programming Languages: {', '.join(languages)}\n"
             text += f"Topics & Skills: {', '.join(topics)}\n\n"
             text += "Notable Repositories:\n"
-            text += "\n---\n".join(repo_texts[:5])  # Include top 5 repos
+            text += "\n---\n".join(repo_texts)  
             
             return text
             
