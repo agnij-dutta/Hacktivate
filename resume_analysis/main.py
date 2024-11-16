@@ -8,6 +8,8 @@ import json
 from utils.token_validator import TokenValidator
 from utils.rate_limiter import RateLimiter
 from config import Config
+from parsers.profile_parser import ProfileParser
+
 
 # Load environment variables
 load_dotenv()

@@ -3,9 +3,9 @@ import torch
 from typing import Dict, List, Optional
 import json
 import asyncio
-from ..utils.cache import Cache
-from ..utils.exceptions import LLMError
-from ..config import Config
+from utils.cache import Cache
+from utils.exceptions import LLMError
+from config import Config
 import re
 
 class LLMAnalyzer:

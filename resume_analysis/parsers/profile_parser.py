@@ -3,7 +3,7 @@ import PyPDF2
 import io
 from github import Github
 from linkedin import linkedin
-from datetime import datetime
+from datetime import datetime 
 import re
 
 class ProfileParser:
