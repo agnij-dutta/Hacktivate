@@ -75,4 +75,20 @@ def authenticate(username, password):
         print("Authentication failed: Incorrect password.")
         return False
 
+def verify_password(username: str, password: str) -> bool:
+    """Verify a user's password."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT password_hash, salt FROM users WHERE username = ?', (username,))
+        result = cursor.fetchone()
+        if not result:
+            return False
+            
+        stored_hash, salt = result
+        _, password_hash = hash_password(password, salt)
+        return password_hash == stored_hash
+    finally:
+        conn.close()
+
 #

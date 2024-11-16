@@ -1,94 +1,53 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import httpx
-
-from pylibs.auth import authenticate, register
-
-register("admin", "password")
-authenticate("admin", "password")
-authenticate("admin", "wrong_password")
-register("admin", "password")
+from typing import Optional
+from .pylibs.auth import register as auth_register, verify_password, create_jwt_token
 
 app = FastAPI()
 
-# Replace with your actual backend URL
-AUTH_BACKEND_URL = "http://backend-service-url:8000"
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Add your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Request Body Models
-class SignupRequest(BaseModel):
+class UserLogin(BaseModel):
     email: str
     password: str
 
-class LoginRequest(BaseModel):
+class UserRegister(BaseModel):
     email: str
     password: str
+    accountType: str
+    companyName: Optional[str] = None
 
-# Profile Request Body Model
-class ProfileRequest(BaseModel):
-    username: str
-    password: str
-    email: str
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-# Signup Route
-@app.post("/auth/signup")
-async def signup_user(data: SignupRequest):
-    try:
-        async with httpx.AsyncClient() as client:
-            # Forward the signup request to the backend
-            response = await client.post(
-                f"{AUTH_BACKEND_URL}/signup", json=data.dict()
-            )
-            
-            if response.status_code != 201:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.json().get("detail", "Signup failed")
-                )
-            return {"message": "User signed up successfully"}
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Login Route
 @app.post("/auth/login")
-async def login_user(data: LoginRequest):
+async def login(user_data: UserLogin):
     try:
-        async with httpx.AsyncClient() as client:
-            # Forward the login request to the backend
-            response = await client.post(
-                f"{AUTH_BACKEND_URL}/login", json=data.dict()
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.json().get("detail", "Login failed")
-                )
-            
-            # Assuming backend sends back a token and user info
-            return response.json()
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-# Profile Creation Route
-@app.post("/edit_profile")
-async def create_profile(data: ProfileRequest):
-    try:
-        async with httpx.AsyncClient() as client:
-            # Forward the profile creation request to the backend
-            response = await client.post(
-                f"{AUTH_BACKEND_URL}/profile", json=data.dict()
-            )
-            
-            if response.status_code != 201:
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.json().get("detail", "Profile creation failed")
-                )
-            return {"message": "Profile created successfully"}
-    except httpx.HTTPError as e:
+        # Verify user credentials
+        if not verify_password(user_data.email, user_data.password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Generate JWT token
+        token = create_jwt_token(user_data.email)
+        
+        return {"token": token, "email": user_data.email}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# quick apply and apply for the hackathons 
+@app.post("/auth/register")
+async def register(user_data: UserRegister):
+    try:
+        # Register new user
+        auth_register(user_data.email, user_data.password)
+        
+        # Generate JWT token
+        token = create_jwt_token(user_data.email)
+        
+        return {"token": token, "email": user_data.email}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

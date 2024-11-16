@@ -63,8 +63,18 @@ export default function Home() {
 
   const accountType = form.watch("accountType");
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log({ values });
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const response = await authApi.login({
+        email: values.emailAddress,
+        password: values.password,
+      });
+      console.log('Login successful:', response);
+      // Add redirect logic here
+    } catch (error) {
+      console.error('Login failed:', error);
+      // Add error handling here
+    }
   };
 
   return (

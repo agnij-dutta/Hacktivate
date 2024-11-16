@@ -19,6 +19,7 @@ import {
   SelectItem,
   Select,
 } from "@/components/ui/select";
+import { authApi } from "@/lib/api";
 
 const formSchema = z
   .object({
@@ -63,8 +64,20 @@ export default function Home() {
 
   const accountType = form.watch("accountType");
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log({ values });
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const response = await authApi.register({
+        email: values.emailAddress,
+        password: values.password,
+        accountType: values.accountType,
+        companyName: values.accountType === 'company' ? values.companyName : undefined,
+      });
+      console.log('Registration successful:', response);
+      // Add redirect logic here
+    } catch (error) {
+      console.error('Registration failed:', error);
+      // Add error handling here
+    }
   };
 
   return (
