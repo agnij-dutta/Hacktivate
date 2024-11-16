@@ -59,6 +59,35 @@ class Database:
             )
             conn.commit()
             return cursor.lastrowid
+        
+    @contextmanager
+    def get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def init_db(self):
+        with open('api/pylibs/schema.sql') as f:
+            schema = f.read()
+            with self.get_connection() as conn:
+                conn.executescript(schema)
+                conn.commit()
+
+    def create_user(self, email: str, password_hash: str, account_type: str, company_name: Optional[str] = None) -> int:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO users (email, password_hash, account_type, company_name)
+                VALUES (?, ?, ?, ?)
+                """,
+                (email, password_hash, account_type, company_name)
+            )
+            conn.commit()
+            return cursor.lastrowid
 
     @staticmethod
     def verify_password(email: str, password: str) -> bool:
@@ -162,18 +191,31 @@ class Database:
             return cursor.lastrowid
 
     @staticmethod
-    def get_active_hackathons() -> List[Dict]:
-        """Get all active hackathons"""
+    def get_active_hackathons(filters: Dict = None) -> List[Dict]:
+        """Get active hackathons with filters"""
+        query = """
+            SELECT * FROM hackathons 
+            WHERE status = 'published' 
+            AND application_deadline > datetime('now')
+        """
+        params = []
+        
+        if filters:
+            if 'name' in filters:
+                query += " AND name LIKE ?"
+                params.append(f"%{filters['name']}%")
+            if 'primary_track' in filters:
+                query += " AND primary_track = ?"
+                params.append(filters['primary_track'])
+            if 'difficulty' in filters:
+                query += " AND difficulty = ?"
+                params.append(filters['difficulty'])
+                
+        query += " ORDER BY start_date ASC"
+        
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM hackathons 
-                WHERE status = 'published' 
-                AND application_deadline > datetime('now')
-                ORDER BY start_date ASC
-                """
-            )
+            cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
     @staticmethod

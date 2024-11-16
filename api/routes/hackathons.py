@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
-from ..models import HackathonCreate, Application
+from ..models import HackathonCreate, Application, ApplyType
 from ..pylibs.auth_db import get_current_user, verify_organizer
+from ..pylibs.db import db
+from bson.objectid import ObjectId
+from datetime import datetime
+
 
 router = APIRouter()
 
@@ -93,4 +97,22 @@ async def approve_application(
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Application not found")
     
-    return {"status": "Application approved"} 
+    return {"status": "Application approved"}
+
+@router.get("/search")
+async def search_hackathons(
+    query: Optional[str] = None,
+    track: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    current_user = Depends(get_current_user)
+):
+    filters = {}
+    if query:
+        filters["name"] = {"$regex": query, "$options": "i"}
+    if track:
+        filters["primary_track"] = track
+    if difficulty:
+        filters["difficulty"] = difficulty
+        
+    hackathons = await db.get_active_hackathons(filters)
+    return {"hackathons": hackathons} 

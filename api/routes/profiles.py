@@ -5,6 +5,9 @@ from ..pylibs.auth_db import get_current_user
 from resume_analysis.main import analyze_candidate
 from ..pylibs.db import db
 from ..pylibs.file_storage import save_file
+from bson.objectid import ObjectId
+from datetime import datetime
+from resume_analysis.models.hackathon_matcher import HackathonMatcher
 
 router = APIRouter()
 
@@ -65,4 +68,11 @@ async def get_hackathon_recommendations(
     matcher = HackathonMatcher()
     matches = matcher.match_hackathons(profile["analysis"], hackathons)
     
-    return {"recommendations": matches} 
+    return {"recommendations": matches}
+
+@router.get("/me")
+async def get_my_profile(current_user = Depends(get_current_user)):
+    profile = await db.get_profile_by_user_id(current_user["id"])
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile 

@@ -38,6 +38,7 @@ class LLMAnalyzer:
             
         except Exception as e:
             raise LLMError(f"Resume analysis failed: {str(e)}")
+        
 
     async def _get_llm_response(self, prompt: str) -> Dict:
         """Get response from Hugging Face Inference API"""
@@ -136,3 +137,65 @@ class LLMAnalyzer:
             return round(sum(scores) / len(scores), 2)
         except Exception as e:
             raise LLMError(f"Failed to calculate overall score: {str(e)}")
+
+    async def analyze_text(self, text: str) -> Dict:
+        """Analyze text using LLM"""
+        try:
+            # Check cache first
+            cache_key = f"llm_analysis_{hash(text)}"
+            cached_result = self.cache.get(cache_key)
+            if cached_result:
+                return cached_result
+                
+            # Prepare analysis prompts
+            analyses = await asyncio.gather(
+                self._analyze_technical_depth(text),
+                self._analyze_soft_skills(text),
+                self._analyze_projects(text),
+                self._analyze_growth_potential(text)
+            )
+            
+            # Structure results
+            result = {
+                'technical_depth': analyses[0],
+                'soft_skills': analyses[1],
+                'project_analysis': analyses[2],
+                'growth_potential': analyses[3]
+            }
+            
+            # Cache result
+            self.cache.set(cache_key, result)
+            return result
+            
+        except Exception as e:
+            raise LLMError(f"LLM analysis failed: {str(e)}")
+            
+    async def _analyze_technical_depth(self, text: str) -> Dict:
+        """Analyze technical skills and depth"""
+        # Implementation would use actual LLM API call
+        # This is a placeholder
+        return {
+            'skill_depth_score': 0.8,
+            'key_technical_achievements': ['Python', 'Machine Learning']
+        }
+        
+    async def _analyze_soft_skills(self, text: str) -> Dict:
+        """Analyze soft skills"""
+        return {
+            'score': 0.7,
+            'identified_skills': ['Communication', 'Leadership']
+        }
+        
+    async def _analyze_projects(self, text: str) -> Dict:
+        """Analyze project experience"""
+        return {
+            'project_score': 0.75,
+            'technical_complexity': 'High'
+        }
+        
+    async def _analyze_growth_potential(self, text: str) -> Dict:
+        """Analyze growth potential"""
+        return {
+            'score': 0.85,
+            'growth_indicators': ['Learning ability', 'Initiative']
+        }

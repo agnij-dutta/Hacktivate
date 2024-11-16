@@ -1,7 +1,10 @@
 "use client";
-import * as z from "zod";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/api-client";
 import {
   Form,
   FormControl,
@@ -12,124 +15,170 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Alert } from "@/components/ui/alert";
+import { FileUpload } from "@/components/FileUpload";
 
-const formSchema = z
-  .object({
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    linkedin: z.string().url(),
-    github: z.string().url(),
-    resume: z.optional(z.instanceof(File)),
-  });
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  githubUsername: z.string().optional(),
+  linkedinUrl: z.string().url("Please enter a valid LinkedIn URL").optional(),
+  resumeFile: z.instanceof(File, { message: "Resume is required" }),
+  linkedinFile: z.instanceof(File).optional(),
+});
 
-export default function Home() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+export default function ProfileSetup() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      linkedin: "",
-      github: "",
-      resume: undefined,
+      name: "",
+      githubUsername: "",
+      linkedinUrl: "",
     },
   });
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log({ values });
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("name", values.name);
+      if (values.githubUsername) {
+        formData.append("github_username", values.githubUsername);
+      }
+      if (values.linkedinUrl) {
+        formData.append("linkedin_url", values.linkedinUrl);
+      }
+      formData.append("resume_file", values.resumeFile);
+      if (values.linkedinFile) {
+        formData.append("linkedin_file", values.linkedinFile);
+      }
+
+      const response = await apiClient.profiles.create(formData);
+      
+      // Store profile data in local state/context if needed
+      // await updateUserProfile(response.data);
+      
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to create profile");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="max-w-md w-full flex flex-col gap-4"
-        >
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => {
-              return (
+    <div className="container max-w-2xl mx-auto py-10">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Complete Your Profile</h1>
+          <p className="text-muted-foreground">
+            Tell us about yourself to get personalized hackathon recommendations
+          </p>
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            {error}
+          </Alert>
+        )}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First name</FormLabel>
+                  <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="First name" {...field} />
+                    <Input placeholder="John Doe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => {
-              return (
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="githubUsername"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Last name</FormLabel>
+                  <FormLabel>GitHub Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="Last name" {...field} />
+                    <Input placeholder="johndoe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-          <FormField
-            control={form.control}
-            name="linkedin"
-            render={({ field }) => {
-              return (
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="linkedinUrl"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>LinkedIn</FormLabel>
+                  <FormLabel>LinkedIn Profile URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="LinkedIn" {...field} />
+                    <Input 
+                      placeholder="https://linkedin.com/in/johndoe" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-          <FormField
-            control={form.control}
-            name="github"
-            render={({ field }) => {
-              return (
-                <FormItem>
-                  <FormLabel>Github</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Github" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-          <FormField
-            control={form.control}
-            name="resume"
-            render={({ field }) => {
-              return (
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="resumeFile"
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Resume (PDF)</FormLabel>
                   <FormControl>
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
-                      <Label htmlFor="picture">Picture</Label>
-                      <Input id="picture" type="file" />
-                    </div>
+                    <FileUpload
+                      accept=".pdf"
+                      onChange={(file) => field.onChange(file)}
+                    />
                   </FormControl>
                   <FormMessage />
-           </FormItem>
-              );
-            }}
-          />
-          <Button type="submit" className="w-full">
-            Save
-          </Button>
-        </form>
-      </Form>
-    </main>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="linkedinFile"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>LinkedIn Export (Optional, PDF)</FormLabel>
+                  <FormControl>
+                    <FileUpload
+                      accept=".pdf"
+                      onChange={(file) => field.onChange(file)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating Profile..." : "Create Profile"}
+            </Button>
+          </form>
+        </Form>
+      </div>
+    </div>
   );
 }     
 

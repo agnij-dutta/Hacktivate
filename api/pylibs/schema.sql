@@ -1,4 +1,3 @@
- -- Users table with authentication and role information
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
@@ -10,7 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TIMESTAMP
 );
 
--- Profiles table for participant information
 CREATE TABLE IF NOT EXISTS profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -19,14 +17,13 @@ CREATE TABLE IF NOT EXISTS profiles (
     linkedin_url TEXT,
     resume_path TEXT NOT NULL,
     linkedin_path TEXT,
-    analysis_results TEXT NOT NULL, -- JSON stored as text
+    analysis_results TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
--- Hackathons table
 CREATE TABLE IF NOT EXISTS hackathons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     organizer_id INTEGER NOT NULL,
@@ -37,7 +34,7 @@ CREATE TABLE IF NOT EXISTS hackathons (
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP NOT NULL,
     application_deadline TIMESTAMP NOT NULL,
-    prize_pool REAL,
+    prize_pool DECIMAL(10,2),
     external_url TEXT,
     quick_apply_enabled BOOLEAN DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
@@ -52,7 +49,6 @@ CREATE TABLE IF NOT EXISTS hackathons (
     CHECK (max_team_size >= min_team_size)
 );
 
--- Applications table for hackathon applications
 CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     profile_id INTEGER NOT NULL,
@@ -67,7 +63,6 @@ CREATE TABLE IF NOT EXISTS applications (
     UNIQUE (profile_id, hackathon_id)
 );
 
--- Teams table for hackathon teams
 CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hackathon_id INTEGER NOT NULL,
@@ -78,7 +73,6 @@ CREATE TABLE IF NOT EXISTS teams (
     UNIQUE (hackathon_id, name)
 );
 
--- Team members table
 CREATE TABLE IF NOT EXISTS team_members (
     team_id INTEGER NOT NULL,
     profile_id INTEGER NOT NULL,
@@ -89,7 +83,6 @@ CREATE TABLE IF NOT EXISTS team_members (
     FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE
 );
 
--- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON profiles(status);
@@ -102,7 +95,6 @@ CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
 CREATE INDEX IF NOT EXISTS idx_teams_hackathon_id ON teams(hackathon_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_profile_id ON team_members(profile_id);
 
--- Triggers for updated_at timestamps
 CREATE TRIGGER IF NOT EXISTS update_profile_timestamp 
     AFTER UPDATE ON profiles
 BEGIN
@@ -119,4 +111,4 @@ CREATE TRIGGER IF NOT EXISTS update_application_timestamp
     AFTER UPDATE ON applications
 BEGIN
     UPDATE applications SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
+END; 

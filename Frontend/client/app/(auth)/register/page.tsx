@@ -19,6 +19,8 @@ import {
   SelectItem,
   Select,
 } from "@/components/ui/select";
+import { apiClient } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 
 const formSchema = z
   .object({
@@ -62,9 +64,25 @@ export default function Home() {
   });
 
   const accountType = form.watch("accountType");
+  const router = useRouter();
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log({ values });
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const response = await apiClient.auth.register({
+        email: values.emailAddress,
+        password: values.password,
+        accountType: values.accountType,
+        companyName: values.accountType === 'company' ? values.companyName : undefined
+      });
+      
+      if (response.data.token) {
+        router.push('/setup');
+      }
+    } catch (error) {
+      form.setError('root', {
+        message: error.response?.data?.detail || 'Registration failed'
+      });
+    }
   };
 
   return (

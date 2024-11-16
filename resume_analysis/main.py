@@ -43,6 +43,22 @@ def initialize_llm():
         print("2. Created an API token at https://huggingface.co/settings/tokens")
         return False
 
+def analyze_skills(skills: List[str]) -> Dict:
+    return {"skill_count": len(skills), "skills": skills}
+
+def analyze_experience(experience: List[Dict]) -> str:
+    years = sum(exp.get('duration_years', 0) for exp in experience)
+    if years < 2: return "Entry"
+    elif years < 5: return "Mid"
+    else: return "Senior"
+
+def analyze_education(education: List[Dict]) -> str:
+    degrees = [edu.get('degree', '').lower() for edu in education]
+    if any('phd' in d for d in degrees): return "PhD"
+    elif any('master' in d for d in degrees): return "Masters"
+    elif any('bachelor' in d for d in degrees): return "Bachelors"
+    return "Other"
+
 async def analyze_candidate(
     resume_pdf: bytes,
     github_username: Optional[str] = None,

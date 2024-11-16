@@ -19,6 +19,8 @@ import {
   SelectItem,
   Select,
 } from "@/components/ui/select";
+import { apiClient } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 
 const formSchema = z
   .object({
@@ -62,9 +64,23 @@ export default function Home() {
   });
 
   const accountType = form.watch("accountType");
+  const router = useRouter();
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log({ values });
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const response = await apiClient.auth.login({
+        email: values.emailAddress,
+        password: values.password
+      });
+      
+      if (response.data.token) {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      form.setError('root', {
+        message: error.response?.data?.detail || 'Login failed'
+      });
+    }
   };
 
   return (

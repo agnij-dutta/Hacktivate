@@ -1,5 +1,7 @@
 "use client"
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/hooks/useAuth';
 import { Calendar, Users, Trophy, Clock, ArrowRight, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,16 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // Define types
 
 interface Hackathon {
+  id: string;
   name: string;
-  organizer: string;
-  status: HackathonStatus;
-  image: string;
-  date: string;
-  participants: number;
-  prize: number;
-  duration: number;
   description: string;
-  tags: string[];
+  primary_track: string;
+  difficulty: string;
+  start_date: string;
+  end_date: string;
+  application_deadline: string;
+  prize_pool: number;
+  external_url?: string;
+  quick_apply_enabled: boolean;
+  status: string;
 }
 
 interface HackathonCardProps {
@@ -109,56 +113,29 @@ const HackathonCard: React.FC<HackathonCardProps> = ({ hackathon }) => (
 );
 
 
-const HackathonDashboard: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedTab, setSelectedTab] = useState<string>('all');
+export default function HackathonDashboard() {
+  const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrack, setSelectedTrack] = useState('all');
+  const { user } = useAuth();
 
-  const hackathons: Hackathon[] = [
-    {
-      name: "TechCrunch Disrupt 2024",
-      organizer: "TechCrunch",
-      status: "Live",
-      image: "/api/placeholder/800/400",
-      date: "Apr 20-22, 2024",
-      participants: 150,
-      prize: 50000,
-      duration: 48,
-      description: "Join the world's leading technology hackathon. Build the next big thing in AI, blockchain, or cloud computing.",
-      tags: ["AI", "Blockchain", "Cloud"]
-    },
-    {
-      name: "Climate Change Hack",
-      organizer: "GreenTech Foundation",
-      status: "Upcoming",
-      image: "/api/placeholder/800/400",
-      date: "May 15-16, 2024",
-      participants: 75,
-      prize: 25000,
-      duration: 36,
-      description: "Create innovative solutions to combat climate change and promote sustainability.",
-      tags: ["Sustainability", "IoT", "Data"]
-    },
-    {
-      name: "HealthTech Innovation",
-      organizer: "MedTech Alliance",
-      status: "Completed",
-      image: "/api/placeholder/800/400",
-      date: "Mar 10-12, 2024",
-      participants: 100,
-      prize: 30000,
-      duration: 48,
-      description: "Revolutionize healthcare with cutting-edge technology solutions.",
-      tags: ["Healthcare", "AI", "Mobile"]
-    },
-  ];
+  useEffect(() => {
+    loadHackathons();
+  }, [searchQuery, selectedTrack]);
 
-  const filteredHackathons = (status: string) => {
-    return hackathons.filter(hackathon => {
-      const matchesSearch = hackathon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          hackathon.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = status === 'all' || hackathon.status === status;
-      return matchesSearch && matchesStatus;
-    });
+  const loadHackathons = async () => {
+    try {
+      const response = await apiClient.hackathons.list({
+        query: searchQuery || undefined,
+        track: selectedTrack === 'all' ? undefined : selectedTrack
+      });
+      setHackathons(response.data.hackathons);
+    } catch (error) {
+      console.error('Failed to load hackathons:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -196,7 +173,7 @@ const HackathonDashboard: React.FC = () => {
       </div>
 
       {/* Tabs Section */}
-      <Tabs defaultValue="all" className="space-y-6" value={selectedTab} onValueChange={setSelectedTab}>
+      <Tabs defaultValue="all" className="space-y-6" value={selectedTrack} onValueChange={setSelectedTrack}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="Live">Live</TabsTrigger>
@@ -206,7 +183,7 @@ const HackathonDashboard: React.FC = () => {
 
         <TabsContent value="all" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHackathons('all').map((hackathon, index) => (
+            {hackathons.map((hackathon, index) => (
               <HackathonCard key={index} hackathon={hackathon} />
             ))}
           </div>
@@ -214,7 +191,7 @@ const HackathonDashboard: React.FC = () => {
 
         <TabsContent value="Live">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHackathons('Live').map((hackathon, index) => (
+            {hackathons.filter(hackathon => hackathon.status === 'Live').map((hackathon, index) => (
               <HackathonCard key={index} hackathon={hackathon} />
             ))}
           </div>
@@ -222,7 +199,7 @@ const HackathonDashboard: React.FC = () => {
 
         <TabsContent value="Upcoming">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHackathons('Upcoming').map((hackathon, index) => (
+            {hackathons.filter(hackathon => hackathon.status === 'Upcoming').map((hackathon, index) => (
               <HackathonCard key={index} hackathon={hackathon} />
             ))}
           </div>
@@ -230,7 +207,7 @@ const HackathonDashboard: React.FC = () => {
 
         <TabsContent value="Completed">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHackathons('Completed').map((hackathon, index) => (
+            {hackathons.filter(hackathon => hackathon.status === 'Completed').map((hackathon, index) => (
               <HackathonCard key={index} hackathon={hackathon} />
             ))}
           </div>
@@ -238,6 +215,4 @@ const HackathonDashboard: React.FC = () => {
       </Tabs>
     </div>
   );
-};
-
-export default HackathonDashboard;
+}
