@@ -409,7 +409,7 @@ export default function LandingPage() {
         <div className="pb-5 "><Image src="/images/logo.png" width={150} height={150} alt="Logo" /></div>
         <h1 className="text-7xl font-bold ">Hacktivate</h1> <br />
         <p className="text-xl text-muted-foreground text-left p-2">Hackathons at your fingertips</p>
-        <Link className={buttonVariants({ variant: "outline" })} href={"/dashboard"}>Try it Out!</Link>
+        <Link className={buttonVariants({ variant: "outline" })} href="/register">Try it Out!</Link>
         </div>
       <div className="scale-[90%] z-20">
         <World data={sampleArcs} globeConfig={globeConfig} />

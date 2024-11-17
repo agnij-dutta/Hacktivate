@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  accountType   String    // "personal" or "company"
+  companyName   String?
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  profile       Profile?
+  applications  Application[]
+  hackathons    Hackathon[]    // For organizers
+}
+
+model Profile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  name            String
+  githubUsername  String?
+  linkedinUrl     String?
+  resumePath      String
+  linkedinPath    String?
+  analysisResults Json?
+  status          String    @default("active")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  applications    Application[]
+}
+
+model Hackathon {
+  id                  String    @id @default(cuid())
+  organizerId         String
+  organizer           User      @relation(fields: [organizerId], references: [id])
+  name                String
+  description         String
+  primaryTrack        String
+  difficulty          String
+  startDate          DateTime
+  endDate            DateTime
+  applicationDeadline DateTime
+  prizePool          Float?
+  externalUrl        String?
+  quickApplyEnabled  Boolean   @default(false)
+  status             String    @default("draft")
+  createdAt          DateTime  @default(now())
+  applications       Application[]
+}
+
+model Application {
+  id           String    @id @default(cuid())
+  profileId    String
+  profile      Profile   @relation(fields: [profileId], references: [id])
+  hackathonId  String
+  hackathon    Hackathon @relation(fields: [hackathonId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  status       String    @default("pending")
+  type         String    @default("quick")
+  createdAt    DateTime  @default(now())
+} 
